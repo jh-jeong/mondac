@@ -1,5 +1,7 @@
+setuptools
+
 numpy
 networkx
 scipy
 
-git+https://github.com/automl/ConfigSpace.git
+git+https://github.com/automl/ConfigSpace@master
