@@ -3,7 +3,7 @@ from distutils.core import setup
 setup(
     name='mondac',
     version='0.1.0',
-    packages=['test', 'mondac', 'mondac.utils'],
+    packages=['mondac.tests', 'mondac', 'mondac.utils'],
     url='',
     license='GNU General Public License v3.0',
     author='Jongheon Jeong',
