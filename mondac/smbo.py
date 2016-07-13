@@ -33,24 +33,24 @@ class MF_SMBO(MondrianForest):
 
         super(MF_SMBO, self).__init__(configuration_dag, random_state, size_ensemble, split_threshold)
 
-    def update_configurations(self, configurations, labels):
-        if type(configurations) is not list:
-            raise TypeError("configs must be a list, currently %s" % configurations)
-        if type(labels) is not list:
-            raise TypeError("labels must be a list, currently %s" % labels)
-        if len(configurations) != len(labels):
-            raise ValueError("configurations and labels should have same length")
-        if len(configurations) == 0:
+    def update_configurations(self, evaluations):
+        if len(evaluations) == 0:
             raise ValueError("There should be at least one point to construct MondrianForest")
-        for config in configurations:
+        for config in evaluations:
             self.configuration_dag.check_configuration(config)
+            
+        configurations = []
+        y = []
+        for conf, score in evaluations:
+            configurations.append(conf)
+            y.append(score)
 
         if self.lower_bound is not None:
-            if any([(l < self.lower_bound) for l in labels]):
+            if any([(l < self.lower_bound) for l in y]):
                 raise ValueError("Invalid label is given under the bounded condition of MFO")
-            labels = [np.log2(l-self.lower_bound) for l in labels]
+            labels = [np.log2(l-self.lower_bound) for l in y]
 
-        self.partial_fit(configurations, labels)
+        self.partial_fit(configurations, y)
         self.n_data += len(configurations)
         self.configurations.extend(configurations)
 
