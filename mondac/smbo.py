@@ -38,17 +38,17 @@ class MF_SMBO(MondrianForest):
             raise ValueError("There should be at least one point to construct MondrianForest")
         for config in evaluations:
             self.configuration_dag.check_configuration(config)
-            
+
         configurations = []
         y = []
-        for conf, score in evaluations:
+        for conf, score in evaluations.items():
             configurations.append(conf)
             y.append(score)
 
         if self.lower_bound is not None:
             if any([(l < self.lower_bound) for l in y]):
                 raise ValueError("Invalid label is given under the bounded condition of MFO")
-            labels = [np.log2(l-self.lower_bound) for l in y]
+            y = [np.log2(l-self.lower_bound) for l in y]
 
         self.partial_fit(configurations, y)
         self.n_data += len(configurations)
