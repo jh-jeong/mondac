@@ -1,4 +1,5 @@
 import time
+import logging
 
 import numpy as np
 from ConfigSpace.util import get_one_exchange_neighbourhood
@@ -11,25 +12,30 @@ from .objects import MondrianForest
 # TODO configuration_dag --> space
 class MF_SMBO(MondrianForest):
     def __init__(self, configuration_dag, acquisition='ei', lower_bound=None,
-                 size_ensemble=20, split_threshold=1, min_for_search=10, seed=1,
-                 logger=None):
+                 size_ensemble=20, split_threshold=1, min_for_search=10, seed=1, debug=False):
+
         if acquisition not in acquisition_map:
             raise ValueError("Invalid acquisition setting")
         if not isinstance(configuration_dag, ConfigurationDAG):
             raise ValueError(configuration_dag)
 
+        self.configuration_dag = configuration_dag
         self.acquisition = acquisition_map[acquisition]
         self.lower_bound = lower_bound
         self.n_data = 0
         self.configurations = []
-        self.seed = seed
-        random_state = np.random.RandomState(seed)
-
         self.acquisition_hyperparameters = {"ei_xi": -0.005,
                                             "ucb_kappa": 2.0}
         self.min_for_search = min_for_search
-        self.logger = logger
-        self.configuration_dag = configuration_dag
+
+        self.seed = seed
+        random_state = np.random.RandomState(seed)
+
+        self.debug = debug
+        self.logger = logging.getLogger("mondac")
+        log_level = logging.DEBUG if self.debug else logging.INFO
+        self.logger.setLevel(log_level)
+        self.logger.addHandler(logging.NullHandler())
 
         super(MF_SMBO, self).__init__(configuration_dag, random_state, size_ensemble, split_threshold)
 
@@ -54,20 +60,18 @@ class MF_SMBO(MondrianForest):
         self.n_data += len(configurations)
         self.configurations.extend(configurations)
 
-    def select_configurations(self, size=1):
+    def select_configuration(self):
         t_start0 = time.time()
         t_start = time.time()
-        if size < 1:
-            return []
+
         if self.n_data < self.min_for_search:
-            samples = self.configuration_dag.sample_configuration(size)
-            return samples if size > 1 else [samples]
+            return self.configuration_dag.sample_configuration()
 
         acquisitions = self.map_acquisition()
         candidates = sorted(enumerate(acquisitions),
                             key=lambda x: x[1], reverse=True)[:5]
         t_end = time.time()
-        self.logger.info("==== Mapping previous ei : %s" % (t_end-t_start))
+        self.logger.info("Mapping previous points : %s" % (t_end-t_start))
         t_start = time.time()
 
         optimized = []
@@ -78,7 +82,7 @@ class MF_SMBO(MondrianForest):
             optimized.append(config_opt)
 
         t_end = time.time()
-        self.logger.info("==== Local searching : %s" % (t_end - t_start))
+        self.logger.info("Local searching : %s" % (t_end - t_start))
         t_start = time.time()
 
         randoms = self.configuration_dag.sample_configuration(20)
@@ -87,14 +91,12 @@ class MF_SMBO(MondrianForest):
             config_opt = self._local_search(config, acq)
             optimized.append(config_opt)
 
-        optimized = [c for v, c in sorted(optimized, reverse=True)[:size]]
-
-        self.map_acquisition(configurations=optimized[:2])
+        optimized = sorted(optimized, reverse=True)[0][1]
 
         t_end = time.time()
-        self.logger.info("==== Random samples ei : %s" % (t_end - t_start))
+        self.logger.info("Random samples ei : %s" % (t_end - t_start))
 
-        self.logger.info("New %d configurations are selected: %s sec" % (size, t_end - t_start0))
+        self.logger.info("New configuration is selected: %s sec" % (t_end - t_start0))
         return optimized
 
     def map_acquisition(self, configurations=None):
