@@ -105,10 +105,10 @@ class MondrianTree(object):
         if parent.t_birth + cut_time < node.t_birth:
             cut_d_, cut_x_ = node.configuration_boxes.draw_cut_ext(configuration, self.random_state)
 
-            new_parent = MondrianNode(node.configuration_boxes.configuration_dag,
+            new_parent = MondrianNode(node.configuration_boxes.configuration_space,
                                       node.configurations+[configuration],
                                       node.y+[label], parent)
-            #new_sibling = MondrianNode(node.configuration_boxes.configuration_dag,
+            #new_sibling = MondrianNode(node.configuration_boxes.configuration_space,
             #                           [configuration], [label], new_parent)
             #node.parent = new_parent
 
@@ -158,7 +158,7 @@ class MondrianTree(object):
                 val = vector[node.cut_d]
                 if np.isnan(val):
                     if node.middle is None:
-                        new_sibling = MondrianNode(node.configuration_boxes.configuration_dag,
+                        new_sibling = MondrianNode(node.configuration_boxes.configuration_space,
                                                    [configuration], [label], node)
                         node.middle = new_sibling
                         return
