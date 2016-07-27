@@ -1,19 +1,16 @@
 import numpy as np
+from ConfigSpace import ConfigurationSpace
 
 from .box import ConfigurationBoxes
-from .domain import ConfigurationDAG
 
 
 # FIXME parallelize
 # TODO Debug mode
 class MondrianNode(object):
-    __slots__ = ('parent', 'left', 'middle', 'right', 'cut_d', 'cut_x',
-                 't_birth', 'configurations','configuration_boxes', 'y', 'm', 'v')
-
-    def __init__(self, configuration_dag, configurations, y, parent):
+    def __init__(self, configuration_space, configurations, y, parent):
         self.configurations = configurations
         self.y = y
-        self.configuration_boxes = ConfigurationBoxes(configuration_dag)
+        self.configuration_boxes = ConfigurationBoxes(configuration_space)
         self.t_birth = np.inf
         self.parent = parent
         self.left, self.middle, self.right = None, None, None
@@ -52,13 +49,13 @@ class MondrianNode(object):
         if len(configurations_l) * len(configurations_r) == 0:
             raise ValueError("indices are not properly splitted")
 
-        node_l = MondrianNode(self.configuration_boxes.configuration_dag,
+        node_l = MondrianNode(self.configuration_boxes.configuration_space,
                               configurations_l, y_l, self)
-        node_r = MondrianNode(self.configuration_boxes.configuration_dag,
+        node_r = MondrianNode(self.configuration_boxes.configuration_space,
                               configurations_r, y_r, self)
         node_m = None
         if len(configurations_m) > 0:
-            node_m = MondrianNode(self.configuration_boxes.configuration_dag,
+            node_m = MondrianNode(self.configuration_boxes.configuration_space,
                                   configurations_m, y_m, self)
 
         self.left = node_l
@@ -72,11 +69,11 @@ class MondrianNode(object):
 
 
 class MondrianTree(object):
-    def __init__(self, configuration_dag, configurations, y, split_threshold, random_state):
+    def __init__(self, configuration_space, configurations, y, split_threshold, random_state):
         self.random_state = random_state
-        self.epsilon = MondrianNode(configuration_dag, configurations, y, None)
+        self.epsilon = MondrianNode(configuration_space, configurations, y, None)
         self.epsilon.t_birth = 0
-        self.root = MondrianNode(configuration_dag, configurations, y, self.epsilon)
+        self.root = MondrianNode(configuration_space, configurations, y, self.epsilon)
         self.split_threshold = split_threshold
         self.grow_tree(self.root)
 
@@ -220,19 +217,19 @@ class MondrianTree(object):
 
 
 class MondrianForest(object):
-    def __init__(self, configuration_dag, random_state, n_ensemble=20, split_threshold=1):
+    def __init__(self, configuration_space, random_state, n_ensemble=20, split_threshold=1):
         self.n_ensemble = n_ensemble
         self.trees = []
         self.y_min = np.inf
         self._is_fitted = False
         self.split_threshold = split_threshold
         self.random_state = random_state
-        self.configuration_dag = configuration_dag
+        self.configuration_space = configuration_space
 
         if n_ensemble <= 0:
             raise ValueError("n_ensemble must be positive")
-        if not isinstance(configuration_dag, ConfigurationDAG):
-            raise ValueError(configuration_dag)
+        if not isinstance(configuration_space, ConfigurationSpace):
+            raise ValueError(configuration_space)
 
     def _add_point(self, configuration, label):
         if label < self.y_min:
@@ -244,10 +241,10 @@ class MondrianForest(object):
         if len(configurations) != len(y):
             raise ValueError("data and y must have the same length.")
         for config in configurations:
-            self.configuration_dag.check_configuration(config)
+            self.configuration_space.check_configuration(config)
 
         for _ in range(self.n_ensemble):
-            tree = MondrianTree(self.configuration_dag,
+            tree = MondrianTree(self.configuration_space,
                                 configurations, y,
                                 self.split_threshold, self.random_state)
             self.trees.append(tree)

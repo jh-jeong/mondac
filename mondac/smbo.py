@@ -1,25 +1,24 @@
-import time
 import logging
+import time
 
 import numpy as np
+from ConfigSpace import ConfigurationSpace
 from ConfigSpace.util import get_one_exchange_neighbourhood
 
 from .acquisitions import acquisition_map
-from .domain import ConfigurationDAG
 from .objects import MondrianForest
 
 
-# TODO configuration_dag --> space
 class MF_SMBO(MondrianForest):
-    def __init__(self, configuration_dag, acquisition='ei', lower_bound=None,
+    def __init__(self, configuration_space, acquisition='ei', lower_bound=None,
                  size_ensemble=20, split_threshold=1, min_for_search=10, seed=1, debug=False):
 
         if acquisition not in acquisition_map:
             raise ValueError("Invalid acquisition setting")
-        if not isinstance(configuration_dag, ConfigurationDAG):
-            raise ValueError(configuration_dag)
+        if not isinstance(configuration_space, ConfigurationSpace):
+            raise ValueError(configuration_space)
 
-        self.configuration_dag = configuration_dag
+        self.configuration_dag = configuration_space
         self.acquisition = acquisition_map[acquisition]
         self.lower_bound = lower_bound
         self.n_data = 0
@@ -37,13 +36,13 @@ class MF_SMBO(MondrianForest):
         self.logger.setLevel(log_level)
         self.logger.addHandler(logging.NullHandler())
 
-        super(MF_SMBO, self).__init__(configuration_dag, random_state, size_ensemble, split_threshold)
+        super(MF_SMBO, self).__init__(configuration_space, random_state, size_ensemble, split_threshold)
 
     def update_configurations(self, evaluations):
         if len(evaluations) == 0:
             raise ValueError("There should be at least one point to construct MondrianForest")
         for config in evaluations:
-            self.configuration_dag.check_configuration(config)
+            self.configuration_space.check_configuration(config)
 
         configurations = []
         y = []
@@ -65,7 +64,7 @@ class MF_SMBO(MondrianForest):
         t_start = time.time()
 
         if self.n_data < self.min_for_search:
-            return self.configuration_dag.sample_configuration()
+            return self.configuration_space.sample_configuration()
 
         acquisitions = self.map_acquisition()
         candidates = sorted(enumerate(acquisitions),
@@ -85,7 +84,7 @@ class MF_SMBO(MondrianForest):
         self.logger.info("Local searching : %s" % (t_end - t_start))
         t_start = time.time()
 
-        randoms = self.configuration_dag.sample_configuration(20)
+        randoms = self.configuration_space.sample_configuration(20)
         acquisitions_random = self.map_acquisition(randoms)
         for config, acq in zip(randoms, acquisitions_random):
             config_opt = self._local_search(config, acq)

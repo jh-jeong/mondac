@@ -2,10 +2,10 @@ import numbers
 from abc import ABCMeta, abstractmethod
 
 import numpy as np
+from ConfigSpace import ConfigurationSpace
 from ConfigSpace.hyperparameters import CategoricalHyperparameter
 
-from .domain import ConfigurationDAG
-from .utils.data import sample_split
+from mondac.utils import sample_split
 
 
 class Box(object):
@@ -112,16 +112,16 @@ class CategoricalBox(Box):
 
 
 class ConfigurationBoxes(object):
-    def __init__(self, configuration_dag):
-        if not isinstance(configuration_dag, ConfigurationDAG):
-            raise ValueError("configuration_dag: %s" % configuration_dag)
+    def __init__(self, configuration_space):
+        if not isinstance(configuration_space, ConfigurationSpace):
+            raise ValueError("Type mismatch: configuration_space, %s != ConfigurationSpace"
+                             % type(configuration_space))
         self.boxes = {}
-        self.configuration_dag = configuration_dag
+        self.configuration_space = configuration_space
 
     def put(self, configuration):
-        self.configuration_dag.check_configuration(configuration)
+        self.configuration_space.check_configuration(configuration)
         idx_active = np.where(~np.isnan(configuration._vector))[0]
-        dag = self.configuration_dag.dag
 
         for idx in idx_active:
             configuration_space = configuration.configuration_space
@@ -129,11 +129,10 @@ class ConfigurationBoxes(object):
             hp = configuration_space.get_hyperparameter(hp_name)
             box = self.boxes.get(hp_name)
             if box is None:
-                weight = dag.node[hp_name]["weight"]
                 if isinstance(hp, CategoricalHyperparameter):
-                    box = CategoricalBox(hp._num_choices, weight)
+                    box = CategoricalBox(hp._num_choices, 1)
                 else:
-                    box = RealBox(weight)
+                    box = RealBox(1)
                 self.boxes[hp_name] = box
             box.put(configuration._vector[idx])
 
@@ -164,7 +163,7 @@ class ConfigurationBoxes(object):
         cut_box = self.boxes[cut_hyperparameter]
 
         cut_x = cut_box.inverse_transform(offset)
-        cut_d = self.configuration_dag.get_idx_by_hyperparameter_name(cut_hyperparameter)
+        cut_d = self.configuration_space.get_idx_by_hyperparameter_name(cut_hyperparameter)
 
         return cut_d, cut_x
 
@@ -186,7 +185,7 @@ class ConfigurationBoxes(object):
         cut_hyperparameter = aligned_keys[cut_idx]
         cut_box = self.boxes[cut_hyperparameter]
 
-        cut_d = self.configuration_dag.get_idx_by_hyperparameter_name(cut_hyperparameter)
+        cut_d = self.configuration_space.get_idx_by_hyperparameter_name(cut_hyperparameter)
 
         offset_r = cut_box.inverse_transform(offset) - cut_box.lower
         if vector[cut_d] > cut_box.upper:
