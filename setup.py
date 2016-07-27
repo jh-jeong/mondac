@@ -23,7 +23,7 @@ with open(requirements_file) as fh:
 setup(
     name='mondac',
     version='0.1.0',
-    packages=['mondac.tests', 'mondac', 'mondac.utils'],
+    packages=['mondac.tests', 'mondac'],
     install_requires=requirements,
     dependency_links=dependency_links,
     url='',
