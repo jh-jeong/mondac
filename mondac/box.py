@@ -5,7 +5,7 @@ import numpy as np
 from ConfigSpace import ConfigurationSpace
 from ConfigSpace.hyperparameters import CategoricalHyperparameter
 
-from mondac.utils import sample_split
+from .utils import sample_split
 
 
 class Box(object):
